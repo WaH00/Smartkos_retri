@@ -1,16 +1,15 @@
 import 'package:get/get.dart';
 
-import '../../../data/models/kos_model.dart';
-import '../../../data/repositories/kos_repository.dart';
+import '../../../data/models/kos_result_model.dart';
+import '../../../data/repositories/search_repository.dart';
 import '../../../routes/app_routes.dart';
 import '../../home/controllers/home_controller.dart';
 
 class SavedController extends GetxController {
   SavedController(this._repository);
 
-  final KosRepository _repository;
-
-  final favorites = <KosModel>[].obs;
+  final SearchRepository _repository;
+  final favorites = <KosResultModel>[].obs;
   final isLoading = false.obs;
 
   @override
@@ -20,31 +19,23 @@ class SavedController extends GetxController {
   }
 
   Future<void> loadFavorites() async {
-    isLoading.value = true;
-    try {
-      favorites.assignAll(await _repository.getFavoriteKos());
-    } finally {
-      isLoading.value = false;
-    }
+    favorites.assignAll(_repository.getFavorites());
   }
 
-  Future<void> toggleFavorite(KosModel kos) async {
-    await _repository.toggleFavorite(kos.id);
-    await loadFavorites();
-    if (Get.isRegistered<HomeController>()) {
-      await Get.find<HomeController>().refreshCurrentResults();
-    }
+  void toggleFavorite(KosResultModel kos) {
+    _repository.toggleFavorite(kos);
+    loadFavorites();
+    _syncHome(kos.idKos);
   }
 
-  Future<void> clearFavorites() async {
+  void clearFavorites() {
     if (favorites.isEmpty) return;
-
-    await _repository.clearFavorites();
-    await loadFavorites();
-    if (Get.isRegistered<HomeController>()) {
-      await Get.find<HomeController>().refreshCurrentResults();
+    final ids = favorites.map((kos) => kos.idKos).toList();
+    _repository.clearFavorites();
+    loadFavorites();
+    for (final id in ids) {
+      _syncHome(id);
     }
-
     Get.snackbar(
       'Wishlist dikosongkan',
       'Semua kos tersimpan sudah dihapus.',
@@ -52,7 +43,19 @@ class SavedController extends GetxController {
     );
   }
 
-  void openDetail(KosModel kos) {
-    Get.toNamed(AppRoutes.detailKos, arguments: kos.id);
+  void openDetail(KosResultModel kos) {
+    Get.toNamed(AppRoutes.detailKos, arguments: kos);
+  }
+
+  void _syncHome(int idKos) {
+    if (!Get.isRegistered<HomeController>()) return;
+    final home = Get.find<HomeController>();
+    final index = home.results.indexWhere((kos) => kos.idKos == idKos);
+    if (index != -1) {
+      final isSaved = _repository.getFavorites().any(
+        (kos) => kos.idKos == idKos,
+      );
+      home.results[index] = home.results[index].copyWith(isFavorite: isSaved);
+    }
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/empty_state.dart';
@@ -84,8 +85,20 @@ class _ExploreTab extends GetView<HomeController> {
     return RefreshIndicator(
       onRefresh: controller.refreshCurrentResults,
       child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
         children: [
+          Obx(
+            () => Align(
+              alignment: Alignment.centerLeft,
+              child: _BackendIndicator(
+                isOnline: controller.isBackendOnline.value,
+                isChecking: controller.isCheckingBackend.value,
+                onTap: controller.checkBackendHealth,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
           _SearchPanel(controller: controller),
           const SizedBox(height: 18),
           Obx(
@@ -100,6 +113,14 @@ class _ExploreTab extends GetView<HomeController> {
           _FilterChips(controller: controller),
           const SizedBox(height: 22),
           Obx(
+            () => _SearchMetadata(
+              totalResults: controller.totalResults.value,
+              superDealCount: controller.superDealCount.value,
+              searchTimeMs: controller.searchTimeMs.value,
+              expansionTerms: controller.expansionTerms.toList(),
+            ),
+          ),
+          Obx(
             () => Row(
               children: [
                 Expanded(
@@ -111,7 +132,7 @@ class _ExploreTab extends GetView<HomeController> {
                   ),
                 ),
                 Text(
-                  '${controller.kosList.length} hasil',
+                  '${controller.totalResults.value} hasil',
                   style: const TextStyle(
                     color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w700,
@@ -122,12 +143,7 @@ class _ExploreTab extends GetView<HomeController> {
           ),
           const SizedBox(height: 14),
           Obx(() {
-            if (controller.isLoading.value) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 48),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
+            if (controller.isLoading.value) return const _LoadingCards();
 
             if (controller.errorMessage.value.isNotEmpty) {
               return EmptyState(
@@ -137,16 +153,19 @@ class _ExploreTab extends GetView<HomeController> {
               );
             }
 
-            if (controller.kosList.isEmpty) {
-              return const EmptyState(
-                title: 'Kos belum ditemukan',
-                message:
-                    'Coba ubah kata kunci, fasilitas, harga, atau radius pencarian.',
+            if (controller.results.isEmpty) {
+              return EmptyState(
+                title: controller.searchText.value.trim().isEmpty
+                    ? 'Mulai cari kos'
+                    : 'Kos belum ditemukan',
+                message: controller.searchText.value.trim().isEmpty
+                    ? 'Tulis kebutuhan kos kamu, lalu tekan Cari Kos.'
+                    : 'Coba gunakan kata kunci yang lebih umum.',
               );
             }
 
             return Column(
-              children: controller.kosList
+              children: controller.results
                   .map(
                     (kos) => Padding(
                       padding: const EdgeInsets.only(bottom: 16),
@@ -166,6 +185,58 @@ class _ExploreTab extends GetView<HomeController> {
   }
 }
 
+class _BackendIndicator extends StatelessWidget {
+  const _BackendIndicator({
+    required this.isOnline,
+    required this.isChecking,
+    required this.onTap,
+  });
+
+  final bool isOnline;
+  final bool isChecking;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isChecking
+        ? AppTheme.textSecondary
+        : isOnline
+        ? const Color(0xFF138A55)
+        : const Color(0xFFC0392B);
+    final label = isChecking
+        ? 'Memeriksa backend'
+        : isOnline
+        ? 'Online'
+        : 'Offline';
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _SearchPanel extends StatelessWidget {
   const _SearchPanel({required this.controller});
 
@@ -177,12 +248,12 @@ class _SearchPanel extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 18,
-            offset: const Offset(0, 10),
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -212,24 +283,31 @@ class _SearchPanel extends StatelessWidget {
               minimumSize: const Size.fromHeight(48),
               foregroundColor: AppTheme.primary,
               side: const BorderSide(color: AppTheme.primary),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Obx(
+            () => TextField(
+              controller: controller.searchController,
+              onChanged: controller.onSearchTextChanged,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => controller.searchKos(),
+              decoration: InputDecoration(
+                hintText:
+                    'Cari kos idaman... (Misal: Kos dekat UI ada AC dan tenang)',
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: controller.searchText.value.isEmpty
+                    ? null
+                    : IconButton(
+                        onPressed: controller.clearSearch,
+                        icon: const Icon(Icons.close_rounded),
+                        tooltip: 'Hapus pencarian',
+                      ),
               ),
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: controller.searchTextController,
-            onChanged: controller.onSearchTextChanged,
-            textInputAction: TextInputAction.search,
-            onSubmitted: (_) => controller.searchKos(),
-            decoration: const InputDecoration(
-              hintText:
-                  'Cari kos idaman... (Misal: Kos dekat UI ada AC dan tenang)',
-              prefixIcon: Icon(Icons.search_rounded),
-            ),
-          ),
-          const SizedBox(height: 12),
+          // Price inputs remain UI-only until the backend supports filters.
           Row(
             children: [
               Expanded(
@@ -250,10 +328,16 @@ class _SearchPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          ElevatedButton.icon(
-            onPressed: controller.searchKos,
-            icon: const Icon(Icons.tune_rounded),
-            label: const Text('Cari Kos'),
+          Obx(
+            () => ElevatedButton.icon(
+              onPressed: controller.isLoading.value
+                  ? null
+                  : controller.searchKos,
+              icon: const Icon(Icons.search_rounded),
+              label: Text(
+                controller.isLoading.value ? 'Mencari...' : 'Cari Kos',
+              ),
+            ),
           ),
         ],
       ),
@@ -268,6 +352,7 @@ class _FilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Facility chips remain UI-only until the backend supports filters.
     return Obx(
       () => Wrap(
         spacing: 8,
@@ -282,6 +367,88 @@ class _FilterChips extends StatelessWidget {
             onSelected: (_) => controller.toggleFacility(facility),
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+class _SearchMetadata extends StatelessWidget {
+  const _SearchMetadata({
+    required this.totalResults,
+    required this.superDealCount,
+    required this.searchTimeMs,
+    required this.expansionTerms,
+  });
+
+  final int totalResults;
+  final int superDealCount;
+  final double searchTimeMs;
+  final List<String> expansionTerms;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasMetadata =
+        searchTimeMs > 0 || totalResults > 0 || expansionTerms.isNotEmpty;
+    if (!hasMetadata) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F7FA),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 14,
+            runSpacing: 6,
+            children: [
+              Text('$totalResults hasil'),
+              Text('$superDealCount super deal'),
+              Text('${searchTimeMs.toStringAsFixed(1)} ms'),
+            ],
+          ),
+          if (expansionTerms.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Kata terkait: ${expansionTerms.join(', ')}',
+              style: const TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingCards extends StatelessWidget {
+  const _LoadingCards();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(
+        2,
+        (_) => Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Shimmer.fromColors(
+            baseColor: const Color(0xFFE5E7EB),
+            highlightColor: const Color(0xFFF8FAFC),
+            child: Container(
+              height: 350,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

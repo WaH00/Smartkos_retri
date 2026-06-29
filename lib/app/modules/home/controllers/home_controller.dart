@@ -2,28 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 
-import '../../../data/models/kos_model.dart';
-import '../../../data/repositories/kos_repository.dart';
+import '../../../core/api/api_client.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../data/models/kos_result_model.dart';
+import '../../../data/repositories/search_repository.dart';
 import '../../../routes/app_routes.dart';
+import '../../saved/controllers/saved_controller.dart';
 
 class HomeController extends GetxController {
   HomeController(this._repository);
 
-  final KosRepository _repository;
+  final SearchRepository _repository;
 
-  final searchTextController = TextEditingController();
+  final searchController = TextEditingController();
   final minPriceController = TextEditingController();
   final maxPriceController = TextEditingController();
 
+  final isLoading = false.obs;
+  final isBackendOnline = false.obs;
+  final isCheckingBackend = false.obs;
+  final errorMessage = ''.obs;
+  final errorHint = ''.obs;
+  final results = <KosResultModel>[].obs;
+  final expansionTerms = <String>[].obs;
+  final searchTimeMs = 0.0.obs;
+  final totalResults = 0.obs;
+  final superDealCount = 0.obs;
+  final selectedLatitude = (-6.1862).obs;
+  final selectedLongitude = 106.8348.obs;
+  final topK = ApiConstants.defaultTopK.obs;
+  final nCandidates = ApiConstants.defaultNCandidates.obs;
+
   final searchText = ''.obs;
   final selectedArea = 'Jakarta Selatan'.obs;
-  final selectedLatitude = (-6.2615).obs;
-  final selectedLongitude = 106.8106.obs;
   final radiusKm = 5.0.obs;
   final selectedFacilities = <String>[].obs;
-  final kosList = <KosModel>[].obs;
-  final isLoading = false.obs;
-  final errorMessage = ''.obs;
   final selectedBottomNavigationIndex = 0.obs;
 
   final areas = const [
@@ -39,7 +52,7 @@ class HomeController extends GetxController {
     'Semua',
     'Wi-Fi',
     'AC',
-    'Parking',
+    'Parkir',
     'Dapur',
     'KM Dalam',
   ];
@@ -47,38 +60,71 @@ class HomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    searchKos();
+    checkBackendHealth();
   }
 
   @override
   void onClose() {
-    searchTextController.dispose();
+    searchController.dispose();
     minPriceController.dispose();
     maxPriceController.dispose();
     super.onClose();
   }
 
-  Future<void> searchKos() async {
+  Future<void> checkBackendHealth() async {
+    isCheckingBackend.value = true;
     try {
-      isLoading.value = true;
-      errorMessage.value = '';
+      isBackendOnline.value = await _repository.checkHealth();
+    } catch (_) {
+      isBackendOnline.value = false;
+    } finally {
+      isCheckingBackend.value = false;
+    }
+  }
 
-      final results = await _repository.searchKos(
-        query: searchText.value,
+  Future<void> searchKos() async {
+    final kueri = searchController.text.trim();
+    if (kueri.isEmpty) {
+      Get.snackbar(
+        'Kata kunci diperlukan',
+        'Masukkan kebutuhan kos yang ingin kamu cari.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    isLoading.value = true;
+    errorMessage.value = '';
+    errorHint.value = '';
+    try {
+      final response = await _repository.searchKos(
+        kueri: kueri,
         latitude: selectedLatitude.value,
         longitude: selectedLongitude.value,
-        radiusKm: radiusKm.value,
-        minPrice: _parsePrice(minPriceController.text),
-        maxPrice: _parsePrice(maxPriceController.text),
-        facilities: selectedFacilities,
+        topK: topK.value,
+        nCandidates: nCandidates.value,
       );
 
-      kosList.assignAll(results);
-    } catch (_) {
-      errorMessage.value = 'Pencarian gagal. Coba beberapa saat lagi.';
+      isBackendOnline.value = true;
+      results.assignAll(response.results);
+      expansionTerms.assignAll(response.expansionTerms);
+      searchTimeMs.value = response.searchTimeMs;
+      totalResults.value = response.totalResults;
+      superDealCount.value = response.superDealCount;
+    } catch (error) {
+      final isOffline =
+          error is ApiException &&
+          (error.message.contains('tidak dapat diakses') ||
+              error.message.contains('melewati batas waktu'));
+      if (isOffline) isBackendOnline.value = false;
+
+      errorMessage.value = isOffline
+          ? 'Backend tidak dapat diakses. Pastikan FastAPI berjalan di port 8000.'
+          : 'Pencarian gagal. Silakan coba beberapa saat lagi.';
+      errorHint.value = error.toString();
       Get.snackbar(
         'Pencarian gagal',
-        'Belum bisa memuat rekomendasi kos. Silakan coba lagi.',
+        errorMessage.value,
         snackPosition: SnackPosition.BOTTOM,
       );
     } finally {
@@ -86,35 +132,29 @@ class HomeController extends GetxController {
     }
   }
 
-  void onSearchTextChanged(String value) {
-    searchText.value = value;
-  }
+  void onSearchTextChanged(String value) => searchText.value = value;
 
   void setArea(String? area) {
-    if (area == null) return;
-    selectedArea.value = area;
+    if (area != null) selectedArea.value = area;
   }
 
   void toggleFacility(String facility) {
+    // Facility selections remain UI-only until the backend supports filters.
     if (facility == 'Semua') {
       selectedFacilities.clear();
-      searchKos();
       return;
     }
-
-    if (selectedFacilities.contains(facility)) {
-      selectedFacilities.remove(facility);
-    } else {
-      selectedFacilities.add(facility);
-    }
-    searchKos();
+    selectedFacilities.contains(facility)
+        ? selectedFacilities.remove(facility)
+        : selectedFacilities.add(facility);
   }
 
-  Future<void> toggleFavorite(KosModel kos) async {
-    final updated = await _repository.toggleFavorite(kos.id);
-    final index = kosList.indexWhere((item) => item.id == kos.id);
-    if (index != -1) {
-      kosList[index] = updated;
+  void toggleFavorite(KosResultModel kos) {
+    final updated = _repository.toggleFavorite(kos);
+    final index = results.indexWhere((item) => item.idKos == kos.idKos);
+    if (index != -1) results[index] = updated;
+    if (Get.isRegistered<SavedController>()) {
+      Get.find<SavedController>().loadFavorites();
     }
   }
 
@@ -127,9 +167,12 @@ class HomeController extends GetxController {
         'radiusKm': radiusKm.value,
       },
     );
+    if (result is! Map) return;
 
-    if (result == null) return;
-    if (result is! Map<String, dynamic>) {
+    final latitude = result['latitude'];
+    final longitude = result['longitude'];
+    final radius = result['radiusKm'];
+    if (latitude is! num || longitude is! num || radius is! num) {
       Get.snackbar(
         'Lokasi tidak berubah',
         'Data lokasi dari peta belum valid.',
@@ -138,40 +181,59 @@ class HomeController extends GetxController {
       return;
     }
 
-    selectedLatitude.value = (result['latitude'] as num).toDouble();
-    selectedLongitude.value = (result['longitude'] as num).toDouble();
-    radiusKm.value = (result['radiusKm'] as num).toDouble();
-    await searchKos();
+    selectedLatitude.value = latitude.toDouble();
+    selectedLongitude.value = longitude.toDouble();
+    radiusKm.value = radius.toDouble();
+    // Radius remains UI-only until the backend search schema supports it.
   }
 
   Future<void> useCurrentLocation() async {
-    final position = await _getCurrentPosition();
-    if (position == null) return;
+    try {
+      final position = await _getCurrentPosition();
+      if (position == null) return;
 
-    selectedLatitude.value = position.latitude;
-    selectedLongitude.value = position.longitude;
-    Get.snackbar(
-      'Lokasi diperbarui',
-      'Pencarian memakai lokasi kamu saat ini.',
-      snackPosition: SnackPosition.BOTTOM,
-    );
-    await searchKos();
+      selectedLatitude.value = position.latitude;
+      selectedLongitude.value = position.longitude;
+      Get.snackbar(
+        'Lokasi diperbarui',
+        'Pencarian akan memakai lokasi kamu saat ini.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (_) {
+      Get.snackbar(
+        'Lokasi gagal dimuat',
+        'Tidak dapat membaca lokasi saat ini. Gunakan pin pada peta.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
   }
 
-  void openDetail(KosModel kos) {
-    Get.toNamed(AppRoutes.detailKos, arguments: kos.id);
+  void clearSearch() {
+    searchController.clear();
+    searchText.value = '';
+    results.clear();
+    expansionTerms.clear();
+    searchTimeMs.value = 0;
+    totalResults.value = 0;
+    superDealCount.value = 0;
+    errorMessage.value = '';
+    errorHint.value = '';
+  }
+
+  void openDetail(KosResultModel kos) {
+    Get.toNamed(AppRoutes.detailKos, arguments: kos);
   }
 
   void setBottomNavigationIndex(int index) {
     selectedBottomNavigationIndex.value = index;
   }
 
-  Future<void> refreshCurrentResults() => searchKos();
-
-  int? _parsePrice(String value) {
-    final cleaned = value.replaceAll(RegExp(r'[^0-9]'), '');
-    if (cleaned.isEmpty) return null;
-    return int.tryParse(cleaned);
+  Future<void> refreshCurrentResults() async {
+    if (searchController.text.trim().isEmpty) {
+      await checkBackendHealth();
+      return;
+    }
+    await searchKos();
   }
 
   Future<Position?> _getCurrentPosition() async {
@@ -189,7 +251,6 @@ class HomeController extends GetxController {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-
     if (permission == LocationPermission.denied) {
       Get.snackbar(
         'Izin lokasi ditolak',
@@ -198,7 +259,6 @@ class HomeController extends GetxController {
       );
       return null;
     }
-
     if (permission == LocationPermission.deniedForever) {
       Get.snackbar(
         'Izin lokasi diblokir',

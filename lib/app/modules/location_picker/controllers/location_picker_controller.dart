@@ -6,8 +6,8 @@ import 'package:latlong2/latlong.dart';
 class LocationPickerController extends GetxController {
   final mapController = MapController();
 
-  final selectedLatitude = (-6.2615).obs;
-  final selectedLongitude = 106.8106.obs;
+  final selectedLatitude = (-6.1862).obs;
+  final selectedLongitude = 106.8348.obs;
   final radiusKm = 5.0.obs;
   final isLoadingLocation = false.obs;
 

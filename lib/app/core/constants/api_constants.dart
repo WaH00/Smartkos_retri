@@ -1,5 +1,31 @@
-abstract class ApiConstants {
-  static const baseUrl = 'http://10.0.2.2:8000/api/v1';
-  static const searchKos = '/search-kos';
-  static const kos = '/kos';
+class ApiConstants {
+  ApiConstants._();
+
+  static const String serverBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://10.0.2.2:8000',
+  );
+
+  static const String apiV1 = '/api/v1';
+  static const String searchKos = '$apiV1/search-kos';
+  static const String health = '$apiV1/health';
+
+  static const Duration connectTimeout = Duration(seconds: 10);
+  static const Duration receiveTimeout = Duration(seconds: 30);
+
+  static const int defaultTopK = 10;
+  static const int defaultNCandidates = 20;
+
+  static String staticFileUrl(String fotoPath) {
+    final normalizedPath = fotoPath.trim();
+    if (normalizedPath.isEmpty) return '';
+    if (normalizedPath.startsWith('http://') ||
+        normalizedPath.startsWith('https://')) {
+      return normalizedPath;
+    }
+    final path = normalizedPath.startsWith('/')
+        ? normalizedPath.substring(1)
+        : normalizedPath;
+    return '$serverBaseUrl/static/$path';
+  }
 }

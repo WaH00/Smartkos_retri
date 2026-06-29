@@ -2,10 +2,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/widgets/empty_state.dart';
-import '../../../data/models/kos_model.dart';
+import '../../../data/models/kos_result_model.dart';
 import '../controllers/saved_controller.dart';
 
 class SavedView extends GetView<SavedController> {
@@ -17,12 +18,9 @@ class SavedView extends GetView<SavedController> {
   Widget build(BuildContext context) {
     final content = RefreshIndicator(
       onRefresh: controller.loadFavorites,
-      child: Obx(() {
-        if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        return ListView(
+      child: Obx(
+        () => ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
           children: [
             _SavedHeader(
@@ -36,7 +34,7 @@ class SavedView extends GetView<SavedController> {
                 child: EmptyState(
                   title: 'Belum ada kos tersimpan',
                   message:
-                      'Tekan ikon hati pada kartu kos untuk menyimpan pilihan favorit.',
+                      'Tekan ikon hati pada hasil pencarian untuk menyimpan kos.',
                   icon: Icons.favorite_border_rounded,
                 ),
               )
@@ -52,12 +50,11 @@ class SavedView extends GetView<SavedController> {
                 ),
               ),
           ],
-        );
-      }),
+        ),
+      ),
     );
 
     if (!showScaffold) return content;
-
     return Scaffold(
       appBar: AppBar(title: const Text('KosFind')),
       body: content,
@@ -74,7 +71,6 @@ class _SavedHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final propertyText = count == 1 ? 'property' : 'properties';
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -115,16 +111,6 @@ class _SavedHeader extends StatelessWidget {
         ),
         TextButton(
           onPressed: count == 0 ? null : onClearAll,
-          style: TextButton.styleFrom(
-            minimumSize: const Size(64, 30),
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            foregroundColor: const Color(0xFF005BD3),
-            disabledForegroundColor: const Color(0xFF9CA3AF),
-            textStyle: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
           child: const Text('Clear All'),
         ),
       ],
@@ -139,7 +125,7 @@ class _SavedKosCard extends StatelessWidget {
     required this.onToggleFavorite,
   });
 
-  final KosModel kos;
+  final KosResultModel kos;
   final VoidCallback onTap;
   final VoidCallback onToggleFavorite;
 
@@ -165,60 +151,42 @@ class _SavedKosCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: Text(
                               kos.namaKos,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 15,
-                                  ),
+                              style: const TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          InkWell(
-                            onTap: onToggleFavorite,
-                            borderRadius: BorderRadius.circular(18),
-                            child: Container(
+                          IconButton(
+                            onPressed: onToggleFavorite,
+                            constraints: const BoxConstraints.tightFor(
                               width: 34,
                               height: 34,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.16),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.favorite_rounded,
-                                color: Color(0xFF1D8BFF),
-                                size: 20,
-                              ),
+                            ),
+                            padding: EdgeInsets.zero,
+                            tooltip: 'Hapus dari Saved',
+                            icon: const Icon(
+                              Icons.favorite_rounded,
+                              color: Color(0xFF1D8BFF),
+                              size: 20,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(
-                            Icons.location_on_outlined,
-                            size: 13,
-                            color: Colors.black87,
-                          ),
+                          const Icon(Icons.location_on_outlined, size: 13),
                           const SizedBox(width: 3),
                           Expanded(
                             child: Text(
-                              _compactAddress(kos.alamat),
+                              kos.locationText,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -230,58 +198,38 @@ class _SavedKosCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Wrap(
                         spacing: 5,
-                        runSpacing: 4,
-                        children: kos.fasilitas
+                        children: kos.facilityLabels
                             .take(3)
                             .map((facility) => _MiniFacility(label: facility))
                             .toList(),
                       ),
                       const Spacer(),
-                      Container(height: 1, color: const Color(0xFFE5E7EB)),
-                      const SizedBox(height: 8),
+                      const Divider(height: 1),
+                      const SizedBox(height: 7),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  'Rp',
-                                  style: TextStyle(
-                                    color: Color(0xFF005BD3),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    height: 0.9,
-                                  ),
-                                ),
-                                Text(
-                                  _priceNumber(kos.harga),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFF005BD3),
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                    height: 1,
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              CurrencyFormatter.rupiah(kos.hargaPerBulan),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF005BD3),
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ),
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: 2),
-                            child: Text(
-                              '/ bulan',
-                              style: TextStyle(
-                                color: Color(0xFF4B5563),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          const Text(
+                            '/ bulan',
+                            style: TextStyle(
+                              color: Color(0xFF4B5563),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
@@ -296,27 +244,16 @@ class _SavedKosCard extends StatelessWidget {
       ),
     );
   }
-
-  String _compactAddress(String address) {
-    if (address.toLowerCase().contains('jakarta selatan')) {
-      return 'Jakarta Selatan';
-    }
-    final parts = address.split(',');
-    return parts.length > 1 ? parts.last.trim() : address;
-  }
-
-  String _priceNumber(int value) {
-    return CurrencyFormatter.rupiah(value).replaceFirst('Rp', '').trim();
-  }
 }
 
 class _SavedKosImage extends StatelessWidget {
   const _SavedKosImage({required this.kos});
 
-  final KosModel kos;
+  final KosResultModel kos;
 
   @override
   Widget build(BuildContext context) {
+    final imageUrl = ApiConstants.staticFileUrl(kos.fotoPath);
     return SizedBox(
       width: 112,
       height: 142,
@@ -327,15 +264,14 @@ class _SavedKosImage extends StatelessWidget {
             borderRadius: const BorderRadius.horizontal(
               left: Radius.circular(8),
             ),
-            child: CachedNetworkImage(
-              imageUrl: kos.imageUrl,
-              fit: BoxFit.cover,
-              placeholder: (_, _) => Container(color: const Color(0xFFE5E7EB)),
-              errorWidget: (_, _, _) => Container(
-                color: const Color(0xFFE5E7EB),
-                child: const Icon(Icons.apartment_rounded),
-              ),
-            ),
+            child: imageUrl.isEmpty
+                ? const _ImageFallback()
+                : CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (_, _) => const _ImageFallback(),
+                    errorWidget: (_, _, _) => const _ImageFallback(),
+                  ),
           ),
           if (kos.isSuperDeal)
             Positioned(
@@ -345,7 +281,7 @@ class _SavedKosImage extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppTheme.primary,
-                  borderRadius: BorderRadius.circular(9),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -374,6 +310,18 @@ class _SavedKosImage extends StatelessWidget {
   }
 }
 
+class _ImageFallback extends StatelessWidget {
+  const _ImageFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Color(0xFFE5E7EB),
+      child: Center(child: Icon(Icons.apartment_rounded)),
+    );
+  }
+}
+
 class _MiniFacility extends StatelessWidget {
   const _MiniFacility({required this.label});
 
@@ -388,7 +336,7 @@ class _MiniFacility extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        label.length > 8 ? '${label.substring(0, 8)}.' : label,
+        label.length > 9 ? '${label.substring(0, 9)}.' : label,
         style: const TextStyle(
           color: Color(0xFF6B7280),
           fontSize: 8,
