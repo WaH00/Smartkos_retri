@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartkos_mobile/app/core/constants/api_constants.dart';
 import 'package:smartkos_mobile/app/data/models/search_response_model.dart';
+import 'package:smartkos_mobile/app/data/providers/search_api_provider.dart';
 
 void main() {
   test('parses FastAPI search response contract', () {
@@ -76,5 +78,74 @@ void main() {
     expect(kos.namaKos, isEmpty);
     expect(kos.facilityLabels, isEmpty);
     expect(kos.discountPercent, 0);
+  });
+
+  test('parses nested data and common field aliases', () {
+    final response = SearchResponseModel.fromResponse({
+      'data': {
+        'total_results': 1,
+        'items': [
+          {
+            'id': '9',
+            'name': 'Kos Harmoni',
+            'city': 'Depok',
+            'area': 'Beji',
+            'price': '1750000',
+            'type': 'Kos Putri',
+            'distance': 2.5,
+            'score': 91,
+            'facilities': ['WiFi', 'KM Dalam', 'Kulkas'],
+          },
+        ],
+      },
+    });
+
+    final kos = response.results.single;
+    expect(response.totalResults, 1);
+    expect(kos.idKos, 9);
+    expect(kos.namaKos, 'Kos Harmoni');
+    expect(kos.tipeKos, 'Kos Putri');
+    expect(kos.distanceKm, 2.5);
+    expect(kos.finalScore, 0.91);
+    expect(kos.facilityLabels, ['KM Dalam', 'Wi-Fi', 'Kulkas']);
+  });
+
+  test('parses a direct result list', () {
+    final response = SearchResponseModel.fromResponse([
+      {'id_kos': 3, 'nama_kos': 'Kos Langsung'},
+    ]);
+
+    expect(response.status, 'success');
+    expect(response.totalResults, 1);
+    expect(response.results.single.namaKos, 'Kos Langsung');
+  });
+
+  test('builds only fields supported by the FastAPI search contract', () {
+    final payload = SearchApiProvider.buildSearchPayload(
+      kueri: '  kos dekat kampus  ',
+      latitude: -6.1862,
+      longitude: 106.8348,
+      topK: 5,
+      nCandidates: 20,
+    );
+
+    expect(payload, {
+      'kueri': 'kos dekat kampus',
+      'latitude': -6.1862,
+      'longitude': 106.8348,
+      'top_k': 5,
+      'n_candidates': 20,
+    });
+  });
+
+  test('builds backend static URLs without a duplicated static segment', () {
+    expect(
+      ApiConstants.staticFileUrl('static/kos/photo.jpg'),
+      '${ApiConstants.serverBaseUrl}/static/kos/photo.jpg',
+    );
+    expect(
+      ApiConstants.staticFileUrl('assets/kos_photos/photo.jpg'),
+      '${ApiConstants.serverBaseUrl}/static/assets/kos_photos/photo.jpg',
+    );
   });
 }

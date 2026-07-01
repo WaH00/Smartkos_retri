@@ -6,7 +6,7 @@ class SearchApiProvider {
 
   final ApiClient _apiClient;
 
-  Future<Map<String, dynamic>> searchKos({
+  Future<dynamic> searchKos({
     required String kueri,
     required double latitude,
     required double longitude,
@@ -15,17 +15,33 @@ class SearchApiProvider {
   }) {
     return _apiClient.post(
       ApiConstants.searchKos,
-      data: {
-        'kueri': kueri.trim(),
-        'latitude': latitude,
-        'longitude': longitude,
-        'top_k': topK,
-        'n_candidates': nCandidates,
-      },
+      data: buildSearchPayload(
+        kueri: kueri,
+        latitude: latitude,
+        longitude: longitude,
+        topK: topK,
+        nCandidates: nCandidates,
+      ),
     );
   }
 
-  Future<Map<String, dynamic>> checkHealth() {
+  Future<dynamic> checkHealth() {
     return _apiClient.get(ApiConstants.health);
+  }
+
+  static Map<String, dynamic> buildSearchPayload({
+    required String kueri,
+    required double latitude,
+    required double longitude,
+    int topK = ApiConstants.defaultTopK,
+    int nCandidates = ApiConstants.defaultNCandidates,
+  }) {
+    return {
+      'kueri': kueri.trim(),
+      'latitude': latitude,
+      'longitude': longitude,
+      'top_k': topK,
+      'n_candidates': nCandidates,
+    };
   }
 }

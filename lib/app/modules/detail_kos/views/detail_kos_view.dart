@@ -112,6 +112,12 @@ class DetailKosView extends GetView<DetailKosController> {
                         label: '${(kos.finalScore * 100).round()}% cocok',
                         color: AppTheme.secondary,
                       ),
+                      if (kos.tipeKos.isNotEmpty)
+                        _InfoPill(
+                          icon: Icons.meeting_room_outlined,
+                          label: kos.tipeKos,
+                          color: AppTheme.textSecondary,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 22),

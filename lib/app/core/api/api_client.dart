@@ -29,10 +29,10 @@ class ApiClient {
 
   final Dio dio;
 
-  Future<Map<String, dynamic>> get(String path) async {
+  Future<dynamic> get(String path) async {
     try {
       final response = await dio.get<dynamic>(path);
-      return _asJsonMap(response.data);
+      return _validateJson(response.data);
     } on DioException catch (error) {
       throw ApiException(
         _messageFor(error),
@@ -41,13 +41,13 @@ class ApiClient {
     }
   }
 
-  Future<Map<String, dynamic>> post(
+  Future<dynamic> post(
     String path, {
     required Map<String, dynamic> data,
   }) async {
     try {
       final response = await dio.post<dynamic>(path, data: data);
-      return _asJsonMap(response.data);
+      return _validateJson(response.data);
     } on DioException catch (error) {
       throw ApiException(
         _messageFor(error),
@@ -56,9 +56,8 @@ class ApiClient {
     }
   }
 
-  Map<String, dynamic> _asJsonMap(dynamic data) {
-    if (data is Map<String, dynamic>) return data;
-    if (data is Map) return Map<String, dynamic>.from(data);
+  dynamic _validateJson(dynamic data) {
+    if (data is Map || data is List) return data;
     throw const ApiException('Format respons backend tidak valid.');
   }
 

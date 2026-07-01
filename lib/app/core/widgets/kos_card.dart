@@ -131,6 +131,19 @@ class KosCard extends StatelessWidget {
                     Expanded(child: Text(kos.locationText)),
                   ],
                 ),
+                if (kos.tipeKos.isNotEmpty) ...[
+                  const SizedBox(height: 7),
+                  Row(
+                    children: [
+                      const Icon(Icons.meeting_room_outlined, size: 17),
+                      const SizedBox(width: 7),
+                      Text(
+                        kos.tipeKos,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ],
                 if (kos.facilityLabels.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Wrap(

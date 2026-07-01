@@ -18,6 +18,7 @@ class KosResultModel {
     required this.isSuperDeal,
     required this.rating,
     required this.fasilitas,
+    this.tipeKos = '',
     this.isFavorite = false,
   });
 
@@ -37,31 +38,46 @@ class KosResultModel {
   final bool isSuperDeal;
   final double rating;
   final FasilitasModel fasilitas;
+  final String tipeKos;
 
   // Favorite is local UI state until the backend exposes a favorite endpoint.
   final bool isFavorite;
 
   factory KosResultModel.fromJson(Map<String, dynamic> json) {
-    final rawFacilities = json['fasilitas'];
     return KosResultModel(
-      idKos: _asInt(json['id_kos']),
-      namaKos: _asString(json['nama_kos']),
-      kota: _asString(json['kota']),
-      wilayah: _asString(json['wilayah']),
-      fotoPath: _asString(json['foto_path']),
-      hargaPerBulan: _asInt(json['harga_per_bulan']),
-      predictedPrice: _asDouble(json['predicted_price']),
-      distanceKm: _asDouble(json['distance_km']),
-      finalScore: _asDouble(json['final_score']),
-      semanticScore: _asDouble(json['semantic_score']),
-      geospatialScore: _asDouble(json['geospatial_score']),
-      priceBoost: _asDouble(json['price_boost']),
-      priceLabel: _asString(json['price_label']),
-      isSuperDeal: _asBool(json['is_super_deal']),
+      idKos: _asInt(_first(json, ['id_kos', 'id', '_id'])),
+      namaKos: _asString(_first(json, ['nama_kos', 'namaKos', 'name'])),
+      kota: _asString(_first(json, ['kota', 'city'])),
+      wilayah: _asString(_first(json, ['wilayah', 'area', 'alamat'])),
+      fotoPath: _asString(
+        _first(json, ['foto_path', 'image_url', 'foto', 'photo']),
+      ),
+      hargaPerBulan: _asInt(
+        _first(json, ['harga_per_bulan', 'harga', 'price']),
+      ),
+      predictedPrice: _asDouble(
+        _first(json, ['predicted_price', 'harga_prediksi']),
+      ),
+      distanceKm: _asDouble(
+        _first(json, ['distance_km', 'jarak_km', 'distance', 'jarak']),
+      ),
+      finalScore: _asScore(
+        _first(json, ['final_score', 'score', 'skor', 'skor_relevansi']),
+      ),
+      semanticScore: _asScore(
+        _first(json, ['semantic_score', 'semanticScore']),
+      ),
+      geospatialScore: _asScore(
+        _first(json, ['geospatial_score', 'geospatialScore']),
+      ),
+      priceBoost: _asScore(_first(json, ['price_boost', 'priceBoost'])),
+      priceLabel: _asString(_first(json, ['price_label', 'priceLabel'])),
+      isSuperDeal: _asBool(_first(json, ['is_super_deal', 'isSuperDeal'])),
       rating: _asDouble(json['rating']),
-      fasilitas: rawFacilities is Map
-          ? FasilitasModel.fromJson(Map<String, dynamic>.from(rawFacilities))
-          : const FasilitasModel.empty(),
+      fasilitas: FasilitasModel.fromDynamic(
+        _first(json, ['fasilitas', 'facilities']),
+      ),
+      tipeKos: _asString(_first(json, ['tipe_kos', 'tipeKos', 'type'])),
     );
   }
 
@@ -95,6 +111,7 @@ class KosResultModel {
       isSuperDeal: isSuperDeal,
       rating: rating,
       fasilitas: fasilitas,
+      tipeKos: tipeKos,
       isFavorite: isFavorite ?? this.isFavorite,
     );
   }
@@ -104,6 +121,19 @@ class KosResultModel {
       value is num ? value.toInt() : int.tryParse('$value') ?? 0;
   static double _asDouble(dynamic value) =>
       value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
+  static double _asScore(dynamic value) {
+    final score = _asDouble(value);
+    return score > 1 && score <= 100 ? score / 100 : score;
+  }
+
   static bool _asBool(dynamic value) =>
       value is bool ? value : value.toString().toLowerCase() == 'true';
+
+  static dynamic _first(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value != null) return value;
+    }
+    return null;
+  }
 }

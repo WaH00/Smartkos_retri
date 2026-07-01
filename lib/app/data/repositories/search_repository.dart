@@ -15,14 +15,14 @@ class SearchRepository {
     required int topK,
     required int nCandidates,
   }) async {
-    final json = await _provider.searchKos(
+    final rawResponse = await _provider.searchKos(
       kueri: kueri,
       latitude: latitude,
       longitude: longitude,
       topK: topK,
       nCandidates: nCandidates,
     );
-    final response = SearchResponseModel.fromJson(json);
+    final response = SearchResponseModel.fromResponse(rawResponse);
     final hydrated = response.results
         .map(
           (kos) => kos.copyWith(isFavorite: _favorites.containsKey(kos.idKos)),

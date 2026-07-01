@@ -23,9 +23,12 @@ class ApiConstants {
         normalizedPath.startsWith('https://')) {
       return normalizedPath;
     }
-    final path = normalizedPath.startsWith('/')
+    var path = normalizedPath.startsWith('/')
         ? normalizedPath.substring(1)
         : normalizedPath;
+    if (path.startsWith('static/')) {
+      path = path.substring('static/'.length);
+    }
     return '$serverBaseUrl/static/$path';
   }
 }

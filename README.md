@@ -14,12 +14,14 @@ Pencarian menggunakan `POST /api/v1/search-kos`. Status backend diperiksa melalu
 `GET /api/v1/health`. URL server diatur saat menjalankan aplikasi dengan
 `--dart-define=API_BASE_URL=...`.
 
-## Menjalankan Backend
+## Menjalankan Backend di Laptop
 
-Dari repository backend:
+Buka terminal PowerShell atau Command Prompt:
 
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```powershell
+cd C:\Users\LENOVO\SmartKost-IR
+.venv\Scripts\activate
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Periksa health endpoint:
@@ -60,13 +62,32 @@ Invoke-RestMethod `
   -Body $body
 ```
 
-## Menjalankan Flutter
+## Menjalankan di Android Fisik
 
-Pasang dependency:
+Cari IP laptop melalui Windows CMD:
 
-```bash
-flutter pub get
+```cmd
+ipconfig
 ```
+
+Ambil `IPv4 Address` dari adapter Wi-Fi, misalnya `192.168.1.12`. Sebelum
+menjalankan Flutter, buka URL berikut melalui browser HP:
+
+```text
+http://192.168.1.12:8000/api/v1/health
+```
+
+Jika health endpoint terbuka, jalankan Flutter menggunakan IP tersebut:
+
+```powershell
+flutter pub get
+flutter run --dart-define=API_BASE_URL=http://192.168.1.12:8000
+```
+
+Nilai IP hanya diberikan melalui `--dart-define` dan tidak disimpan di source
+code. Laptop dan HP harus berada pada jaringan Wi-Fi yang sama.
+
+## Menjalankan di Android Emulator
 
 Android emulator memakai `10.0.2.2` untuk mengakses backend pada laptop host:
 
@@ -74,15 +95,14 @@ Android emulator memakai `10.0.2.2` untuk mengakses backend pada laptop host:
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 ```
 
-Untuk perangkat Android fisik, gunakan IP LAN laptop yang menjalankan backend:
+## Troubleshooting Koneksi HP
 
-```bash
-flutter run --dart-define=API_BASE_URL=http://IP_LAPTOP_BACKEND:8000
-```
-
-Laptop dan ponsel harus berada pada jaringan Wi-Fi yang sama. Pastikan firewall
-laptop mengizinkan koneksi masuk ke port `8000`. Jangan menyimpan IP laptop secara
-permanen di source code.
+- Pastikan laptop dan HP berada pada Wi-Fi yang sama.
+- Jalankan backend dengan `--host 0.0.0.0`, bukan hanya `127.0.0.1`.
+- Izinkan Python atau inbound TCP port `8000` pada Windows Firewall.
+- Gunakan IP laptop pada `API_BASE_URL`, bukan `localhost`, `127.0.0.1`, atau
+  `10.0.2.2`. Alamat `10.0.2.2` hanya digunakan oleh Android emulator.
+- Uji `/api/v1/health` dari browser HP sebelum menjalankan aplikasi.
 
 ## Alur Demo Tim
 
