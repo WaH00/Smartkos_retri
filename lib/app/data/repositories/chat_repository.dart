@@ -12,12 +12,14 @@ class ChatRepository {
     required String message,
     required double userLatitude,
     required double userLongitude,
+    int? kosId,
   }) async {
     final response = await _provider.sendMessage(
       sessionId: sessionId,
       message: message,
       userLatitude: userLatitude,
       userLongitude: userLongitude,
+      kosId: kosId,
     );
     if (response is! Map) {
       throw const ApiException('Format respons chat tidak valid.');

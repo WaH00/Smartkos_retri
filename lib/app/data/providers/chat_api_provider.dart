@@ -11,6 +11,7 @@ class ChatApiProvider {
     required String message,
     required double userLatitude,
     required double userLongitude,
+    int? kosId,
   }) {
     return _apiClient.post(
       ApiConstants.chat,
@@ -19,6 +20,7 @@ class ChatApiProvider {
         message: message,
         userLatitude: userLatitude,
         userLongitude: userLongitude,
+        kosId: kosId,
       ),
     );
   }
@@ -28,12 +30,19 @@ class ChatApiProvider {
     required String message,
     required double userLatitude,
     required double userLongitude,
+    int? kosId,
   }) {
-    return {
+    final payload = <String, dynamic>{
       'session_id': sessionId,
       'message': message.trim(),
       'user_lat': userLatitude,
       'user_lon': userLongitude,
     };
+
+    if (kosId != null && kosId > 0) {
+      payload['kos_id'] = kosId;
+    }
+
+    return payload;
   }
 }

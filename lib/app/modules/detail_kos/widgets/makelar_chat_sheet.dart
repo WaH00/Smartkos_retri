@@ -14,46 +14,42 @@ class MakelarChatSheet extends GetView<DetailKosController> {
       heightFactor: 0.82,
       alignment: Alignment.bottomCenter,
       child: Material(
+        key: const ValueKey('chat-sheet-surface'),
         color: AppTheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         clipBehavior: Clip.antiAlias,
         child: SafeArea(
           top: false,
-          child: Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.viewInsetsOf(context).bottom,
-            ),
-            child: Column(
-              children: [
-                _Header(onClose: Get.back<void>),
-                const Divider(height: 1),
-                Expanded(
-                  child: Obx(
-                    () => ListView.separated(
-                      controller: controller.chatScrollController,
-                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
-                      itemCount: controller.chatMessages.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final message = controller.chatMessages[index];
-                        return ChatMessageBubble(
-                          message: message,
-                          onRetry: controller.retryLastMessage,
-                          onReturnToSearch: controller.returnToSearch,
-                        );
-                      },
-                    ),
+          child: Column(
+            children: [
+              _Header(onClose: Get.back<void>),
+              const Divider(height: 1),
+              Expanded(
+                child: Obx(
+                  () => ListView.separated(
+                    controller: controller.chatScrollController,
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
+                    itemCount: controller.chatMessages.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final message = controller.chatMessages[index];
+                      return ChatMessageBubble(
+                        message: message,
+                        onRetry: controller.retryLastMessage,
+                        onReturnToSearch: controller.returnToSearch,
+                      );
+                    },
                   ),
                 ),
-                Obx(
-                  () => controller.isSendingMessage.value
-                      ? const _TypingIndicator()
-                      : const SizedBox.shrink(),
-                ),
-                const Divider(height: 1),
-                _ChatInput(controller: controller),
-              ],
-            ),
+              ),
+              Obx(
+                () => controller.isSendingMessage.value
+                    ? const _TypingIndicator()
+                    : const SizedBox.shrink(),
+              ),
+              const Divider(height: 1),
+              _ChatInput(controller: controller),
+            ],
           ),
         ),
       ),
@@ -145,32 +141,57 @@ class _ChatInput extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(() {
       final isSending = controller.isSendingMessage.value;
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller.chatTextController,
-                enabled: !isSending,
-                minLines: 1,
-                maxLines: 4,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => controller.sendChatMessage(),
-                decoration: const InputDecoration(
-                  hintText: 'Tanyakan tentang kos...',
-                  isDense: true,
+      return Material(
+        key: const ValueKey('chat-input-bar'),
+        color: AppTheme.surface,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller.chatTextController,
+                  enabled: !isSending,
+                  minLines: 1,
+                  maxLines: 4,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => controller.sendChatMessage(),
+                  decoration: InputDecoration(
+                    hintText: 'Tanyakan tentang kos...',
+                    isDense: true,
+                    filled: true,
+                    fillColor: const Color(0xFFF0F5FA),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: const BorderSide(
+                        color: AppTheme.primary,
+                        width: 1.3,
+                      ),
+                    ),
+                    disabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: isSending ? null : controller.sendChatMessage,
-              tooltip: 'Kirim pesan',
-              icon: const Icon(Icons.send_rounded),
-            ),
-          ],
+              const SizedBox(width: 8),
+              IconButton.filled(
+                onPressed: isSending ? null : controller.sendChatMessage,
+                tooltip: 'Kirim pesan',
+                icon: const Icon(Icons.send_rounded),
+              ),
+            ],
+          ),
         ),
       );
     });

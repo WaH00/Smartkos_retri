@@ -24,6 +24,7 @@ class DetailKosController extends GetxController {
   final chatTextController = TextEditingController();
   final chatScrollController = ScrollController();
 
+  late final int? chatKosId;
   late final String chatSessionId;
   String? _lastFailedMessage;
 
@@ -31,9 +32,12 @@ class DetailKosController extends GetxController {
   void onInit() {
     super.onInit();
     _readArguments();
-    final kosId = kos.value?.idKos ?? 0;
+    final initialKosId = kos.value?.idKos;
+    chatKosId = initialKosId != null && initialKosId > 0 ? initialKosId : null;
+    final sessionKosPart = chatKosId?.toString() ?? 'unknown';
     chatSessionId =
-        'detail-kos-$kosId-${DateTime.now().microsecondsSinceEpoch}';
+        'detail-kos-$sessionKosPart-'
+        '${DateTime.now().microsecondsSinceEpoch}';
     chatMessages.add(
       ChatMessageModel(
         text:
@@ -96,6 +100,21 @@ class DetailKosController extends GetxController {
       return;
     }
 
+    final kosId = chatKosId;
+    if (kosId == null) {
+      chatMessages.add(
+        ChatMessageModel(
+          text:
+              'Data kos belum lengkap. Buka kembali halaman detail lalu coba lagi.',
+          isUser: false,
+          timestamp: DateTime.now(),
+          isError: true,
+        ),
+      );
+      _scrollToLatest();
+      return;
+    }
+
     if (addUserMessage) {
       chatMessages.add(
         ChatMessageModel(
@@ -115,6 +134,7 @@ class DetailKosController extends GetxController {
         message: message,
         userLatitude: latitude,
         userLongitude: longitude,
+        kosId: kosId,
       );
       if (isClosed) return;
       _lastFailedMessage = response.suggestedAction == 'RETRY' ? message : null;
