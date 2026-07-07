@@ -44,6 +44,18 @@ class SavedController extends GetxController {
   }
 
   void openDetail(KosResultModel kos) {
+    if (Get.isRegistered<HomeController>()) {
+      final home = Get.find<HomeController>();
+      Get.toNamed(
+        AppRoutes.detailKos,
+        arguments: {
+          'kos': kos,
+          'userLatitude': home.selectedLatitude.value,
+          'userLongitude': home.selectedLongitude.value,
+        },
+      );
+      return;
+    }
     Get.toNamed(AppRoutes.detailKos, arguments: kos);
   }
 

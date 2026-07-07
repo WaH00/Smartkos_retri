@@ -8,6 +8,7 @@ class ApiConstants {
 
   static const String apiV1 = '/api/v1';
   static const String searchKos = '$apiV1/search-kos';
+  static const String chat = '$apiV1/chat';
   static const String health = '$apiV1/health';
 
   static const Duration connectTimeout = Duration(seconds: 10);

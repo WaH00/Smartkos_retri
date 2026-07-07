@@ -221,7 +221,14 @@ class HomeController extends GetxController {
   }
 
   void openDetail(KosResultModel kos) {
-    Get.toNamed(AppRoutes.detailKos, arguments: kos);
+    Get.toNamed(
+      AppRoutes.detailKos,
+      arguments: {
+        'kos': kos,
+        'userLatitude': selectedLatitude.value,
+        'userLongitude': selectedLongitude.value,
+      },
+    );
   }
 
   void setBottomNavigationIndex(int index) {

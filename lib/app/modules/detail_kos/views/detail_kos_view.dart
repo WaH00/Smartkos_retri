@@ -10,6 +10,7 @@ import '../../../core/widgets/facility_chip.dart';
 import '../../../core/widgets/score_bars.dart';
 import '../../../core/widgets/super_deal_badge.dart';
 import '../controllers/detail_kos_controller.dart';
+import '../widgets/makelar_chat_sheet.dart';
 
 class DetailKosView extends GetView<DetailKosController> {
   const DetailKosView({super.key});
@@ -17,6 +18,21 @@ class DetailKosView extends GetView<DetailKosController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: Obx(() {
+        if (controller.kos.value == null) return const SizedBox.shrink();
+        return SafeArea(
+          child: FloatingActionButton.extended(
+            onPressed: () => Get.bottomSheet<void>(
+              const MakelarChatSheet(),
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+            ),
+            icon: const Icon(Icons.auto_awesome_rounded),
+            label: const Text('Makelar AI'),
+          ),
+        );
+      }),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: Obx(() {
         final kos = controller.kos.value;
         if (kos == null) {
@@ -52,7 +68,7 @@ class DetailKosView extends GetView<DetailKosController> {
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
               sliver: SliverList.list(
                 children: [
                   if (kos.isSuperDeal) ...[
